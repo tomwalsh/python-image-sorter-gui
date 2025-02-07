@@ -35,6 +35,9 @@ This is a simple Python app that allows you to sort images by categories and mov
 - Would like to create a build process to build different versions of the app for different platforms (Win, Mac, Linux)
 - Allow ability to create folders in other locations, or use existing folders in other locations and saving that information across application restarts.
 
+### Minor Bugs
+- There is a small border around the image on the top and left. I would like to remove this, but can't figure out exactly how yet.
+
 
 ### Original Source
 Original code taken from: [https://github.com/aspicho/image-sorter.git](https://github.com/aspicho/image-sorter.git)
