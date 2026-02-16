@@ -235,19 +235,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
     def next_image(self):
         '''Shows the next image'''
-        if self.curr_file < len(self.files):
+        if self.curr_file < len(self.files) - 1:
             self.curr_file += 1
-            if self.curr_file == len(self.files):
-                self.curr_file = len(self.files) - 1
             self.display_image()
 
     def prev_image(self):
         '''Shows the previous image'''
-        if self.curr_file >= 0 and self.curr_file < len(self.files):
-            if self.curr_file > 0:
-                self.curr_file -= 1
-            else:
-                self.curr_file = 0
+        if self.curr_file > 0:
+            self.curr_file -= 1
             self.display_image()
 
     def add_category(self):
