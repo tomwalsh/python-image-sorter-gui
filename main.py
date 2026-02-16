@@ -192,7 +192,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
                                        Qt.TransformationMode.SmoothTransformation)
 
         final_pixmap = QtGui.QPixmap(viewport_size)
-        final_pixmap.fill(Qt.GlobalColor.black)
+        final_pixmap.fill(self.palette().color(QtGui.QPalette.ColorRole.Window))
 
         painter = QtGui.QPainter(final_pixmap)
         x_offset = (viewport_size.width() - scaled_pixmap.width()) // 2
