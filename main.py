@@ -16,6 +16,7 @@ from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from send2trash import send2trash
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from main_window import Ui_mainWindow
+from themes.theme_manager import ThemeManager
 
 IMAGE_FORMATS = {'jpg', 'png', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'tiff', 'tif'}
 VIDEO_FORMATS = {'mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv', 'flv', 'm4v', 'mpg', 'mpeg'}
@@ -110,11 +111,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.videoWidget = QVideoWidget()
         layout.addWidget(self.videoWidget, stretch=1)
 
-        controls = QtWidgets.QHBoxLayout()
-        controls.setContentsMargins(4, 2, 4, 2)
+        self.videoControlsWidget = QtWidgets.QWidget()
+        self.videoControlsWidget.setObjectName("videoControlsWidget")
+        controls = QtWidgets.QHBoxLayout(self.videoControlsWidget)
+        controls.setContentsMargins(4, 4, 4, 4)
 
-        self.playPauseButton = QtWidgets.QPushButton("Play")
-        self.playPauseButton.setFixedWidth(60)
+        self.playPauseButton = QtWidgets.QPushButton("\u25b6")
+        self.playPauseButton.setObjectName("playPauseButton")
+        self.playPauseButton.setMinimumWidth(40)
         self.playPauseButton.clicked.connect(self._toggle_playback)
         controls.addWidget(self.playPauseButton)
 
@@ -123,17 +127,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         controls.addWidget(self.seekSlider, stretch=1)
 
         self.timeLabel = QtWidgets.QLabel("0:00 / 0:00")
-        self.timeLabel.setFixedWidth(100)
+        self.timeLabel.setMinimumWidth(100)
         self.timeLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         controls.addWidget(self.timeLabel)
 
-        self.muteButton = QtWidgets.QPushButton("Mute")
-        self.muteButton.setFixedWidth(50)
+        self.muteButton = QtWidgets.QPushButton("\U0001f50a")
+        self.muteButton.setObjectName("muteButton")
+        self.muteButton.setMinimumWidth(40)
         self.muteButton.setCheckable(True)
         self.muteButton.clicked.connect(self._toggle_mute)
         controls.addWidget(self.muteButton)
 
-        layout.addLayout(controls)
+        layout.addWidget(self.videoControlsWidget)
 
     def _toggle_playback(self):
         if self.mediaPlayer.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
@@ -142,13 +147,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             self.mediaPlayer.play()
 
     def _toggle_mute(self):
-        self.audioOutput.setMuted(self.muteButton.isChecked())
+        muted = self.muteButton.isChecked()
+        self.audioOutput.setMuted(muted)
+        self.muteButton.setText("\U0001f507" if muted else "\U0001f50a")
 
     def _on_playback_state_changed(self, state):
         if state == QMediaPlayer.PlaybackState.PlayingState:
-            self.playPauseButton.setText("Pause")
+            self.playPauseButton.setText("\u23f8")
         else:
-            self.playPauseButton.setText("Play")
+            self.playPauseButton.setText("\u25b6")
 
     def _on_duration_changed(self, duration):
         self.seekSlider.setRange(0, duration)
@@ -171,7 +178,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.timeLabel.setText(f"{fmt(position_ms)} / {fmt(duration_ms)}")
 
     def _is_video(self, filename):
-        return filename.rsplit('.', 1)[-1].lower() in VIDEO_FORMATS
+        ext = os.path.splitext(filename)[1].lower().lstrip('.')
+        return ext in VIDEO_FORMATS
 
     def _stop_video(self):
         self.mediaPlayer.stop()
@@ -219,8 +227,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             row = idx // cols
             col = idx % cols
             button = QtWidgets.QPushButton(category)
+            button.setObjectName("categoryButton")
             button.clicked.connect(self.create_lambda(category))
-            button.setFixedSize(button_width, 35)
+            button.setMinimumWidth(button_width)
+            button.setFixedHeight(35)
             self.buttonsGridLayout.addWidget(button, row, col)
 
     def create_lambda(self, category):
@@ -345,14 +355,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
     def _display_image(self):
         '''Loads image from the current file and displays it scaled to fit'''
         self.mediaStack.setCurrentWidget(self.imageLabel)
-        self.original_pixmap = QtGui.QPixmap(self.media_path)
-        if self.original_pixmap.isNull():
+        reader = QtGui.QImageReader(self.media_path)
+        reader.setAutoTransform(True)
+        size = reader.size()
+        max_dim = 4096
+        if size.isValid() and (size.width() > max_dim or size.height() > max_dim):
+            reader.setScaledSize(size.scaled(max_dim, max_dim, Qt.AspectRatioMode.KeepAspectRatio))
+        image = reader.read()
+        if image.isNull():
             self.original_pixmap = None
             self.image_loaded = False
             self.imageLabel.clear()
             file_name = os.path.basename(self.media_path)
             self.imageLabel.setText(f"Unable to load image: {file_name}")
             return
+        self.original_pixmap = QtGui.QPixmap.fromImage(image)
         self._scale_image()
         self.image_loaded = True
 
@@ -361,25 +378,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         if self.original_pixmap is None:
             return
         viewport_size = self.scrollArea.viewport().size()
-
-        scaled_pixmap = self.original_pixmap.scaled(viewport_size, Qt.AspectRatioMode.KeepAspectRatio,
-                                       Qt.TransformationMode.SmoothTransformation)
-
-        final_pixmap = QtGui.QPixmap(viewport_size)
-        final_pixmap.fill(self.palette().color(QtGui.QPalette.ColorRole.Window))
-
-        painter = QtGui.QPainter(final_pixmap)
-        x_offset = (viewport_size.width() - scaled_pixmap.width()) // 2
-        y_offset = (viewport_size.height() - scaled_pixmap.height()) // 2
-        painter.drawPixmap(x_offset, y_offset, scaled_pixmap)
-        painter.end()
-
-        self.imageLabel.setPixmap(final_pixmap)
+        scaled = self.original_pixmap.scaled(
+            viewport_size, Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation)
+        self.imageLabel.setPixmap(scaled)
 
     def resizeEvent(self, event):
         if self.image_loaded:
             self._resize_timer.start()
         super().resizeEvent(event)
+
+    def closeEvent(self, event):
+        self._resize_timer.stop()
+        self._stop_video()
+        event.accept()
 
     def set_categories(self):
         '''Sets the categories to the folders in the current folder'''
@@ -392,9 +404,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.curr_file = 0
         self.files = []
         self.folders = []
-        for item in os.listdir(self.folder):
+        for item in sorted(os.listdir(self.folder)):
             if os.path.isfile(os.path.join(self.folder, item)):
-                if item.rsplit('.', 1)[-1].lower() in MEDIA_FORMATS:
+                ext = os.path.splitext(item)[1].lower().lstrip('.')
+                if ext in MEDIA_FORMATS:
                     self.files.append(item)
             else:
                 self.folders.append(item)
@@ -456,14 +469,28 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
         if confirmation == QMessageBox.StandardButton.Yes:
             category_path = os.path.join(self.folder, category)
+            failures = []
 
             for file in os.listdir(category_path):
-                os.rename(os.path.join(category_path, file),
-                          os.path.join(self.folder, file))
+                try:
+                    os.rename(os.path.join(category_path, file),
+                              os.path.join(self.folder, file))
+                except OSError as e:
+                    failures.append(f"{file}: {e}")
 
-            os.rmdir(os.path.join(self.folder, category))
-            self.folders.remove(category)
-            self.set_categories()
+            if failures:
+                QMessageBox.warning(self, "Move Errors",
+                                    f"Some files could not be moved back:\n" + "\n".join(failures))
+
+            try:
+                os.rmdir(category_path)
+                self.folders.remove(category)
+            except OSError:
+                if not failures:
+                    QMessageBox.warning(self, "Delete Failed",
+                                        f"Could not remove folder '{category}' (not empty).")
+
+            self.get_folder_content()
 
     def select_folder(self):
         '''Opens folder selection dialog and sets the folder path'''
@@ -479,6 +506,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
+    app.setStyle("Fusion")
+
+    theme = ThemeManager(app)
+    theme.follow_system()
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
