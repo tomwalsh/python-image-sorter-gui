@@ -26,7 +26,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.addCatButton.clicked.connect(self.add_category)
         self.delCatButton.clicked.connect(self.del_category)
 
-        self.setWindowIcon(QIcon("app_icon.ico"))
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        self.setWindowIcon(QIcon(os.path.join(app_dir, "app_icon.ico")))
 
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.imageLabel.setScaledContents(False)
