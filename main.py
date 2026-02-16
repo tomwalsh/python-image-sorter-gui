@@ -89,8 +89,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         path_to_dest = os.path.join(self.folder, category, file_name)
         try:
             os.rename(path_to_file, path_to_dest)
-        except Exception:
-            pass
+        except Exception as e:
+            QMessageBox.warning(self, "Move Failed",
+                                f"Could not move {file_name} to {category}:\n{e}")
+            return
 
         if self.curr_file < len(self.files)-1:
             self.curr_file += 1
