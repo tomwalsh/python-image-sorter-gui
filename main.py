@@ -45,6 +45,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self._resize_timer.setInterval(50)
         self._resize_timer.timeout.connect(self._scale_image)
 
+        self.folderPathSelectorButton.setToolTip("Select a folder of images to sort (Ctrl+O)")
+        self.prevButton.setToolTip("Previous image (Left arrow)")
+        self.nextButton.setToolTip("Next image (Right arrow)")
+        self.addCatButton.setToolTip("Add a new category folder")
+        self.delCatButton.setToolTip("Delete the selected category")
+
         self.toggle_categories()
         self.update_status_bar()
 
