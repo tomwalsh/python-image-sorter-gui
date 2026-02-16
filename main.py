@@ -1,10 +1,19 @@
 import os
 import sys
+
+if sys.platform == "win32":
+    os.environ["QT_MEDIA_BACKEND"] = "windows"
+elif sys.platform == "darwin":
+    os.environ["QT_MEDIA_BACKEND"] = "darwin"
+elif sys.platform == "linux":
+    os.environ["QT_MEDIA_BACKEND"] = "gstreamer"
+
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QTimer, QUrl
 from PyQt6.QtWidgets import QMessageBox, QFileDialog, QStackedWidget
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from send2trash import send2trash
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from main_window import Ui_mainWindow
 
@@ -251,6 +260,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         if not self.files:
             return
 
+        self._stop_video()
+
         file_name = self.files[self.curr_file]
         file_path = os.path.join(self.folder, file_name)
 
@@ -275,9 +286,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             self.reset_state()
         elif self.curr_file >= len(self.files):
             self.curr_file = len(self.files) - 1
-            self.display_image()
+            self.display_media()
         else:
-            self.display_image()
+            self.display_media()
 
     def reset_state(self):
         '''Resets state to initial state'''
