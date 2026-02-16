@@ -1,7 +1,7 @@
 import os
 import sys
 from PyQt6 import QtGui, QtWidgets
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
 from main_window import Ui_mainWindow
@@ -25,6 +25,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.prevButton.clicked.connect(self.prev_image)
         self.addCatButton.clicked.connect(self.add_category)
         self.delCatButton.clicked.connect(self.del_category)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Right), self, self.next_image)
+        QShortcut(QKeySequence(Qt.Key.Key_Left), self, self.prev_image)
+        QShortcut(QKeySequence("Ctrl+O"), self, self.select_folder)
 
         app_dir = os.path.dirname(os.path.abspath(__file__))
         self.setWindowIcon(QIcon(os.path.join(app_dir, "app_icon.ico")))
