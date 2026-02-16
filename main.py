@@ -2,7 +2,7 @@ import os
 import sys
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
 from main_window import Ui_mainWindow
 
@@ -39,6 +39,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
         self.prevButton.setEnabled(False)
         self.nextButton.setEnabled(False)
+
+        self._resize_timer = QTimer()
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.setInterval(50)
+        self._resize_timer.timeout.connect(self._scale_image)
 
         self.toggle_categories()
         self.update_status_bar()
@@ -191,7 +196,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
     def resizeEvent(self, event):
         if self.image_loaded:
-            self._scale_image()
+            self._resize_timer.start()
         super().resizeEvent(event)
 
     def set_categories(self):
