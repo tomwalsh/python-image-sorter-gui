@@ -294,7 +294,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication([])
+    app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
