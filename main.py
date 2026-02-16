@@ -95,11 +95,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
                                 f"Could not move {file_name} to {category}:\n{e}")
             return
 
-        if self.curr_file < len(self.files)-1:
-            self.curr_file += 1
+        self.files.pop(self.curr_file)
+
+        if len(self.files) == 0:
+            self.reset_state()
+        elif self.curr_file >= len(self.files):
+            self.curr_file = len(self.files) - 1
             self.display_image()
         else:
-            self.reset_state()
+            self.display_image()
 
     def reset_state(self):
         '''Rests state to initial state'''
