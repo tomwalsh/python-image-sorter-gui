@@ -37,9 +37,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         QShortcut(QKeySequence(Qt.Key.Key_Left), self, self.prev_image)
         QShortcut(QKeySequence("Ctrl+O"), self, self.select_folder)
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_playback)
+        QShortcut(QKeySequence(Qt.Key.Key_Delete), self, self.delete_file)
 
         app_dir = os.path.dirname(os.path.abspath(__file__))
         self.setWindowIcon(QIcon(os.path.join(app_dir, "app_icon.ico")))
+
+        delete_icon = self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogDiscardButton)
+        self.deleteFileButton.setIcon(delete_icon)
+        self.deleteFileButton.clicked.connect(self.delete_file)
+        self.deleteFileButton.setEnabled(False)
 
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.imageLabel.setScaledContents(False)
@@ -81,6 +87,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.nextButton.setToolTip("Next file (Right arrow)")
         self.addCatButton.setToolTip("Add a new category folder")
         self.delCatButton.setToolTip("Delete the selected category")
+        self.deleteFileButton.setToolTip("Delete current file (Delete key)")
 
         self.toggle_categories()
         self.update_status_bar()
@@ -239,6 +246,39 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         else:
             self.display_media()
 
+    def delete_file(self):
+        '''Sends current file to the system recycle bin'''
+        if not self.files:
+            return
+
+        file_name = self.files[self.curr_file]
+        file_path = os.path.join(self.folder, file_name)
+
+        confirm = QMessageBox.question(
+            self, "Delete File",
+            f"Move '{file_name}' to the recycle bin?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes)
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            send2trash(os.path.normpath(file_path))
+        except Exception as e:
+            QMessageBox.warning(self, "Delete Failed",
+                                f"Could not delete {file_name}:\n{e}")
+            return
+
+        self.files.pop(self.curr_file)
+        if not self.files:
+            self.reset_state()
+        elif self.curr_file >= len(self.files):
+            self.curr_file = len(self.files) - 1
+            self.display_image()
+        else:
+            self.display_image()
+
     def reset_state(self):
         '''Resets state to initial state'''
         self.folder = None
@@ -268,6 +308,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         has_files = len(self.files) > 0
         self.prevButton.setEnabled(has_files and self.curr_file > 0)
         self.nextButton.setEnabled(has_files and self.curr_file < len(self.files) - 1)
+        self.deleteFileButton.setEnabled(has_files)
 
     def display_media(self):
         '''Loads current file and displays it (image or video)'''
