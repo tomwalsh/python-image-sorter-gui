@@ -70,19 +70,21 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
     def add_btns_for_categories(self):
         '''Adds buttons to the grid layout for each category'''
-        rows = int(len(self.folders)/7 + 1)
-        position = [(i, j) for i in range(rows) for j in range(7)]
-
         for i in range(self.buttonsGridLayout.count())[::-1]:
             self.buttonsGridLayout.itemAt(i).widget().deleteLater()
 
-        for position, category in zip(position, self.folders):
-            button = QtWidgets.QPushButton(category)
-            lambda_ = self.create_lambda(category)
+        button_width = 100
+        spacing = self.buttonsGridLayout.spacing() or 6
+        available_width = self.centralwidget.width() - self.gridLayout.contentsMargins().left() - self.gridLayout.contentsMargins().right()
+        cols = max(1, available_width // (button_width + spacing))
 
-            button.clicked.connect(lambda_)
-            button.setFixedSize(100, 35)
-            self.buttonsGridLayout.addWidget(button, *position)
+        for idx, category in enumerate(self.folders):
+            row = idx // cols
+            col = idx % cols
+            button = QtWidgets.QPushButton(category)
+            button.clicked.connect(self.create_lambda(category))
+            button.setFixedSize(button_width, 35)
+            self.buttonsGridLayout.addWidget(button, row, col)
 
     def create_lambda(self, category):
         '''Creates lambda function for each button'''
