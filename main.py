@@ -252,10 +252,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
     def add_category(self):
         '''Adds new category with the name of the text of combobox'''
-        category = self.catListComboBox.currentText()
-        if category in self.folders or not category:
+        category = self.catListComboBox.currentText().strip()
+        if not category or category in self.folders:
             return
-        os.makedirs(os.path.join(self.folder, category))
+
+        invalid_chars = set('/\\:*?"<>|')
+        found = [c for c in category if c in invalid_chars]
+        if found:
+            QMessageBox.warning(self, "Invalid Name",
+                                f"Category name cannot contain: {' '.join(found)}")
+            return
+
+        try:
+            os.makedirs(os.path.join(self.folder, category))
+        except OSError as e:
+            QMessageBox.warning(self, "Create Failed",
+                                f"Could not create category '{category}':\n{e}")
+            return
+
         self.folders.append(category)
         self.set_categories()
 
