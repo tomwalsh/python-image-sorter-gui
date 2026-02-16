@@ -30,6 +30,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.imageLabel.setScaledContents(False)
+        self.imageLabel.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+
+        self.prevButton.setEnabled(False)
+        self.nextButton.setEnabled(False)
 
         self.toggle_categories()
         self.update_status_bar()
@@ -43,13 +47,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
     def update_status_bar(self):
         if len(self.files) == 0:
-            status_text = f""
+            status_text = ""
+        elif self.original_pixmap is None:
+            file_name = os.path.basename(self.image_path)
+            status_text = f'Image: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Invalid image'
         else:
             file_name = os.path.basename(self.image_path)
             orig_width = self.original_pixmap.width()
             orig_height = self.original_pixmap.height()
             status_text = f'Image: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Orig: {orig_width}x{orig_height}'
-        self.statusbar.showMessage(status_text)  
+        self.statusbar.showMessage(status_text)
 
     def add_btns_for_categories(self):
         '''Adds buttons to the grid layout for each category'''
@@ -108,7 +115,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.image_path = None
         self.toggle_categories(False)
         self.update_status_bar()
-
+        self._update_nav_buttons()
 
     def reset_image(self, label="No images found."):
         self.files = []
@@ -123,37 +130,57 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.image_path = None
         self.toggle_categories(False)
         self.update_status_bar()
+        self._update_nav_buttons()
+
+    def _update_nav_buttons(self):
+        has_files = len(self.files) > 0
+        self.prevButton.setEnabled(has_files and self.curr_file > 0)
+        self.nextButton.setEnabled(has_files and self.curr_file < len(self.files) - 1)
 
     def display_image(self):
-        '''Displays image from the current file in the label'''
+        '''Loads image from the current file and displays it scaled to fit'''
         if len(self.files) == 0:
             self.reset_image()
-            pass
+            return
         self.image_path = os.path.join(self.folder, self.files[self.curr_file])
-
         self.original_pixmap = QtGui.QPixmap(self.image_path)
-        label_size = self.imageLabel.size()
+        if self.original_pixmap.isNull():
+            self.original_pixmap = None
+            self.image_loaded = False
+            self.imageLabel.clear()
+            file_name = os.path.basename(self.image_path)
+            self.imageLabel.setText(f"Unable to load image: {file_name}")
+            self.update_status_bar()
+            self._update_nav_buttons()
+            return
+        self._scale_image()
+        self.update_status_bar()
+        self._update_nav_buttons()
+        self.image_loaded = True
 
-        scaled_pixmap = self.original_pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio,
+    def _scale_image(self):
+        '''Scales the cached original_pixmap to fit the scroll area viewport'''
+        if self.original_pixmap is None:
+            return
+        viewport_size = self.scrollArea.viewport().size()
+
+        scaled_pixmap = self.original_pixmap.scaled(viewport_size, Qt.AspectRatioMode.KeepAspectRatio,
                                        Qt.TransformationMode.SmoothTransformation)
 
-        final_pixmap = QtGui.QPixmap(label_size)
+        final_pixmap = QtGui.QPixmap(viewport_size)
         final_pixmap.fill(Qt.GlobalColor.black)
 
         painter = QtGui.QPainter(final_pixmap)
-        x_offset = (label_size.width() - scaled_pixmap.width()) // 2
-        y_offset = (label_size.height() - scaled_pixmap.height()) // 2
+        x_offset = (viewport_size.width() - scaled_pixmap.width()) // 2
+        y_offset = (viewport_size.height() - scaled_pixmap.height()) // 2
         painter.drawPixmap(x_offset, y_offset, scaled_pixmap)
         painter.end()
 
         self.imageLabel.setPixmap(final_pixmap)
-        self.imageLabel.adjustSize()
-        self.update_status_bar()
-        self.image_loaded = True
 
     def resizeEvent(self, event):
         if self.image_loaded:
-            self.display_image()
+            self._scale_image()
         super().resizeEvent(event)
 
     def set_categories(self):
