@@ -1,6 +1,9 @@
 name: Build & Release
 
-on: push
+on:
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -44,6 +47,7 @@ jobs:
             libxcb-shape0
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install -r requirements.txt
           pip install pyinstaller
