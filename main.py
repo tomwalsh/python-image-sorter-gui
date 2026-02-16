@@ -27,7 +27,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.delCatButton.clicked.connect(self.del_category)
 
         self.setWindowIcon(QIcon("app_icon.ico"))
-        
+
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.imageLabel.setScaledContents(False)
+
         self.toggle_categories()
         self.update_status_bar()
 
@@ -129,18 +132,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.image_path = os.path.join(self.folder, self.files[self.curr_file])
 
         self.original_pixmap = QtGui.QPixmap(self.image_path)
-        display_size = self.scrollArea.viewport().size()
-        image_size = self.imageLabel.size()
+        label_size = self.imageLabel.size()
 
-        scaled_pixmap = self.original_pixmap.scaled(display_size, Qt.AspectRatioMode.KeepAspectRatio, 
+        scaled_pixmap = self.original_pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio,
                                        Qt.TransformationMode.SmoothTransformation)
 
-        final_pixmap = QtGui.QPixmap(display_size)
+        final_pixmap = QtGui.QPixmap(label_size)
         final_pixmap.fill(Qt.GlobalColor.black)
 
         painter = QtGui.QPainter(final_pixmap)
-        x_offset = (image_size.width() - scaled_pixmap.width()) // 2
-        y_offset = (image_size.height() - scaled_pixmap.height()) // 2
+        x_offset = (label_size.width() - scaled_pixmap.width()) // 2
+        y_offset = (label_size.height() - scaled_pixmap.height()) // 2
         painter.drawPixmap(x_offset, y_offset, scaled_pixmap)
         painter.end()
 
