@@ -49,6 +49,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
+        shell: bash
         run: |
           pyinstaller \
             --name "${{ github.event.repository.name }}" \
