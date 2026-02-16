@@ -123,23 +123,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             self.display_image()
 
     def reset_state(self):
-        '''Rests state to initial state'''
+        '''Resets state to initial state'''
         self.folder = None
         self.folders = []
-        self.files = []
-        self.curr_file = 0
-        self.imageLabel.clear()
-        self.imageLabel.setText('Nothing here... Just both of us...')
         self.folderPathSelectorButton.setText('Select Folder')
-        self.catListComboBox.clear()
-        self.add_btns_for_categories()
-        self.catListComboBox.setPlaceholderText('Categories')
-        self.image_loaded = False
-        self.original_pixmap = None
-        self.image_path = None
-        self.toggle_categories(False)
-        self.update_status_bar()
-        self._update_nav_buttons()
+        self.reset_image('Nothing here... Just both of us...')
 
     def reset_image(self, label="No images found."):
         self.files = []
