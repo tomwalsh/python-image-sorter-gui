@@ -272,13 +272,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.toggle_categories(True)
         self.get_folder_content()
 
-    def open_file(self):
-        '''Opens selected file in the default program'''
-        if self.fileNameButton.text() == "FileName":
-            QMessageBox.information(self, "Error",
-                                    "Please select a folder first")
-            return
-        os.startfile(f'{self.folder}/{self.fileNameButton.text()}')
 
 
 if __name__ == "__main__":
