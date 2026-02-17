@@ -1,11 +1,11 @@
 # Simple Python Image sorting tool
 
-This is a simple Python app that allows you to sort images by categories and move them to corresponding folders. The app uses the `PyQt6` module for its GUI and python 3.10.0 or higher.
+This is a simple Python app that allows you to sort media (images or video) by categories and move them to corresponding folders. The app uses the `PyQt6` module for its GUI and python 3.10.0 or higher.
 
 ## Features
-* Dynamic image sizing to fit the size of the window. Images are scaled either vertically or horizontally.
-* Next and Previous buttons to allow you to skip images and return to previous images.
-* Moved image information to the status bar instead of having that in the application directly.
+* Dynamic media sizing to fit the size of the window. Media are scaled either vertically or horizontally.
+* Next and Previous buttons to allow you to skip media and return to previous media.
+* Moved media information to the status bar instead of having that in the application directly.
 
 ## Improvements
 * Added some exception handling to account for corner cases that the original application didn't handle properly.
@@ -15,6 +15,9 @@ This is a simple Python app that allows you to sort images by categories and mov
 * Removed click on image name opening default image viewer. The application is already an image viewer this function was redundant.
 
 ### How to install
+- Grab the latest release from the Release listing on GitHub
+
+### OR
 - Clone this repository 
 - Install dependencies by running `pip install -r requirements.txt`
 - Run the main file by running `python main.py`
@@ -26,7 +29,7 @@ This is a simple Python app that allows you to sort images by categories and mov
 ![Next and Previous Buttons](./screenshots/next-previous.gif)
 
 ### How to use
-- Press "Select Folder" button and select the folder that contains the images you want to sort
+- Press "Select Folder" button and select the folder that contains the media you want to sort
 - Type in the new category name if needed in the droplist and press "Add" button. You can add as many categories as you like.
 - To delete a category, select it from the droplist and press "Del" button. Keep in mind that all the images from that category will be moved to main folder
 - To move the image to the desired category, press button with the name of the category.
