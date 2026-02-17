@@ -12,7 +12,7 @@ from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QTimer, QUrl
 from PyQt6.QtWidgets import QMessageBox, QFileDialog, QStackedWidget
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaMetaData
 from send2trash import send2trash
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from main_window import Ui_mainWindow
@@ -36,6 +36,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.media_path = None
         self.media_type = None
         self.cats_visible = False
+        self.video_resolution = None
 
         self.folderPathSelectorButton.clicked.connect(self.select_folder)
         self.nextButton.clicked.connect(self.next_image)
@@ -83,6 +84,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.mediaPlayer.durationChanged.connect(self._on_duration_changed)
         self.mediaPlayer.positionChanged.connect(self._on_position_changed)
         self.mediaPlayer.errorOccurred.connect(self._on_player_error)
+        self.mediaPlayer.metaDataChanged.connect(self._on_metadata_changed)
 
         self.prevButton.setEnabled(False)
         self.nextButton.setEnabled(False)
@@ -165,6 +167,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.seekSlider.setValue(position)
         self._update_time_label(position, self.mediaPlayer.duration())
 
+    def _on_metadata_changed(self):
+        resolution = self.mediaPlayer.metaData().value(QMediaMetaData.Key.Resolution)
+        if resolution and resolution.isValid():
+            self.video_resolution = resolution
+            self.update_status_bar()
+
     def _on_player_error(self, error, message):
         self._stop_video()
         self.mediaStack.setCurrentWidget(self.imageLabel)
@@ -202,7 +210,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             status_text = ""
         elif self.media_type == 'video':
             file_name = os.path.basename(self.media_path)
-            status_text = f'File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Video'
+            if self.video_resolution and self.video_resolution.isValid():
+                res = f'Orig: {self.video_resolution.width()}x{self.video_resolution.height()}'
+            else:
+                res = 'Video'
+            status_text = f'File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | {res}'
         elif self.original_pixmap is None:
             file_name = os.path.basename(self.media_path)
             status_text = f'File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Invalid image'
@@ -338,6 +350,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             return
 
         self._stop_video()
+        self.video_resolution = None
         self.media_path = os.path.join(self.folder, self.files[self.curr_file])
 
         if self._is_video(self.files[self.curr_file]):

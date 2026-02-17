@@ -1,0 +1,202 @@
+/* === Global === */
+QMainWindow {{
+    background-color: palette(window);
+    color: palette(window-text);
+}}
+
+/* === Buttons === */
+QPushButton {{
+    background-color: palette(button);
+    color: palette(button-text);
+    border: 1px solid {border};
+    border-radius: 4px;
+    padding: 6px 12px;
+}}
+
+QPushButton:hover {{
+    background-color: {accent_hover};
+    color: white;
+    border-color: {accent_hover};
+}}
+
+QPushButton:pressed {{
+    background-color: {accent_pressed};
+    color: white;
+    border-color: {accent_pressed};
+}}
+
+QPushButton:disabled {{
+    opacity: 0.5;
+    background-color: palette(midlight);
+    color: palette(mid);
+    border-color: palette(mid);
+}}
+
+/* Delete button — danger colors */
+QPushButton#deleteFileButton {{
+    border-color: {danger};
+    color: {danger};
+}}
+
+QPushButton#deleteFileButton:hover {{
+    background-color: {danger};
+    color: white;
+    border-color: {danger};
+}}
+
+QPushButton#deleteFileButton:pressed {{
+    background-color: {danger_hover};
+    color: white;
+    border-color: {danger_hover};
+}}
+
+/* Navigation buttons */
+QPushButton#prevButton,
+QPushButton#nextButton {{
+    border: 1px solid {border};
+    background-color: palette(button);
+}}
+
+QPushButton#prevButton:hover,
+QPushButton#nextButton:hover {{
+    background-color: {accent_hover};
+    color: white;
+    border-color: {accent_hover};
+}}
+
+QPushButton#prevButton:pressed,
+QPushButton#nextButton:pressed {{
+    background-color: {accent_pressed};
+    color: white;
+    border-color: {accent_pressed};
+}}
+
+/* Category grid buttons */
+QPushButton#categoryButton {{
+    min-width: 80px;
+    background-color: {accent};
+    color: white;
+    border: 1px solid {accent};
+    border-radius: 4px;
+    padding: 6px 12px;
+}}
+
+QPushButton#categoryButton:hover {{
+    background-color: {accent_hover};
+    border-color: {accent_hover};
+}}
+
+QPushButton#categoryButton:pressed {{
+    background-color: {accent_pressed};
+    border-color: {accent_pressed};
+}}
+
+/* Video control buttons */
+QPushButton#playPauseButton,
+QPushButton#muteButton {{
+    border: 1px solid {border};
+    padding: 4px 8px;
+    font-size: 14px;
+}}
+
+QPushButton#playPauseButton:hover,
+QPushButton#muteButton:hover {{
+    background-color: {accent_hover};
+    color: white;
+    border-color: {accent_hover};
+}}
+
+QPushButton#playPauseButton:pressed,
+QPushButton#muteButton:pressed {{
+    background-color: {accent_pressed};
+    color: white;
+    border-color: {accent_pressed};
+}}
+
+/* === ComboBox === */
+QComboBox {{
+    border: 1px solid {border};
+    border-radius: 4px;
+    padding: 4px 24px 4px 8px;
+    background-color: palette(base);
+    color: palette(text);
+}}
+
+QComboBox:hover {{
+    border-color: {accent};
+}}
+
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 20px;
+    border: none;
+}}
+
+QComboBox::down-arrow {{
+    image: url({arrow_path});
+    width: 10px;
+    height: 6px;
+}}
+
+QComboBox QAbstractItemView {{
+    background-color: palette(base);
+    color: palette(text);
+    border: 1px solid {border};
+    selection-background-color: {accent};
+    selection-color: white;
+}}
+
+/* === Slider (seek bar) === */
+QSlider::groove:horizontal {{
+    height: 6px;
+    background-color: {surface};
+    border-radius: 3px;
+    border: 1px solid {border};
+}}
+
+QSlider::handle:horizontal {{
+    background-color: {accent};
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+    border: none;
+}}
+
+QSlider::handle:horizontal:hover {{
+    background-color: {accent_hover};
+}}
+
+QSlider::sub-page:horizontal {{
+    background-color: {accent};
+    border-radius: 3px;
+}}
+
+/* === Scroll Area === */
+QScrollArea {{
+    border: none;
+}}
+
+QScrollArea > QWidget > QWidget {{
+    background-color: palette(window);
+}}
+
+/* === Video Controls Container === */
+QWidget#videoControlsWidget {{
+    background-color: {surface};
+    border-top: 1px solid {border};
+}}
+
+/* === Status Bar === */
+QStatusBar {{
+    border-top: 1px solid {border};
+    font-size: 12px;
+    color: palette(window-text);
+}}
+
+/* === Labels === */
+QLabel {{
+    color: palette(window-text);
+    border: none;
+}}
