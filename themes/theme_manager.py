@@ -1,10 +1,11 @@
-import os
+from __future__ import annotations
+
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QApplication
-
 
 _COLORS = {
     "dark": {
@@ -27,16 +28,17 @@ _COLORS = {
     },
 }
 
+_THEME_DIR = Path(__file__).parent
+
 
 class ThemeManager:
-    def __init__(self, app: QApplication):
+    def __init__(self, app: QApplication) -> None:
         self._app = app
         self._qss_template = self._load_template()
 
     def _load_template(self) -> str:
-        qss_path = os.path.join(os.path.dirname(__file__), "style.qss")
-        with open(qss_path, "r", encoding="utf-8") as f:
-            return f.read()
+        qss_path = _THEME_DIR / "style.qss"
+        return qss_path.read_text(encoding="utf-8")
 
     def current_scheme(self) -> str:
         hints = self._app.styleHints()
@@ -53,6 +55,7 @@ class ThemeManager:
         if sys.platform == "win32":
             try:
                 import winreg
+
                 key = winreg.OpenKey(
                     winreg.HKEY_CURRENT_USER,
                     r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
@@ -64,7 +67,7 @@ class ThemeManager:
                 pass
         return "light"
 
-    def apply_theme(self, scheme: str | None = None):
+    def apply_theme(self, scheme: str | None = None) -> None:
         if scheme is None:
             scheme = self.current_scheme()
 
@@ -73,24 +76,22 @@ class ThemeManager:
 
         # Apply the QSS stylesheet with theme colors
         colors = dict(_COLORS[scheme])
-        arrow_svg = os.path.join(
-            os.path.dirname(__file__), f"down-arrow-{scheme}.svg"
-        )
-        colors["arrow_path"] = arrow_svg.replace("\\", "/")
+        arrow_svg = _THEME_DIR / f"down-arrow-{scheme}.svg"
+        colors["arrow_path"] = str(arrow_svg).replace("\\", "/")
         qss = self._qss_template.format(**colors)
         self._app.setStyleSheet(qss)
 
-    def _set_palette(self, scheme: str):
+    def _set_palette(self, scheme: str) -> None:
         """Set the application palette to match the theme scheme"""
         palette = QPalette()
 
         if scheme == "dark":
             # Dark mode palette with proper colors
-            dark_bg = QColor(53, 53, 53)          # Main background
-            darker_bg = QColor(35, 35, 35)        # Input fields background
-            text_color = QColor(255, 255, 255)    # White text
-            disabled_text = QColor(127, 127, 127) # Gray text
-            highlight = QColor(79, 195, 247)      # Accent color (same as QSS)
+            dark_bg = QColor(53, 53, 53)  # Main background
+            darker_bg = QColor(35, 35, 35)  # Input fields background
+            text_color = QColor(255, 255, 255)  # White text
+            disabled_text = QColor(127, 127, 127)  # Gray text
+            highlight = QColor(79, 195, 247)  # Accent color (same as QSS)
 
             palette.setColor(QPalette.ColorRole.Window, dark_bg)
             palette.setColor(QPalette.ColorRole.WindowText, text_color)
@@ -128,11 +129,11 @@ class ThemeManager:
 
         self._app.setPalette(palette)
 
-    def follow_system(self):
+    def follow_system(self) -> None:
         self.apply_theme()
         self._app.styleHints().colorSchemeChanged.connect(self._on_scheme_changed)
 
-    def _on_scheme_changed(self, scheme):
+    def _on_scheme_changed(self, scheme: Qt.ColorScheme) -> None:
         if scheme == Qt.ColorScheme.Dark:
             self.apply_theme("dark")
         elif scheme == Qt.ColorScheme.Light:

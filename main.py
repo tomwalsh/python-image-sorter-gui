@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import os
 import sys
+from functools import partial
+from pathlib import Path
 
 if sys.platform == "win32":
     os.environ["QT_MEDIA_BACKEND"] = "windows"
@@ -9,34 +13,32 @@ elif sys.platform == "linux":
     os.environ["QT_MEDIA_BACKEND"] = "gstreamer"
 
 from PyQt6 import QtGui, QtWidgets
-from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QTimer, QUrl
-from PyQt6.QtWidgets import QMessageBox, QFileDialog, QStackedWidget
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaMetaData
-from send2trash import send2trash
+from PyQt6.QtGui import QCloseEvent, QIcon, QKeySequence, QResizeEvent, QShortcut
+from PyQt6.QtMultimedia import QAudioOutput, QMediaMetaData, QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
+from PyQt6.QtWidgets import QFileDialog, QMessageBox, QStackedWidget
+from send2trash import send2trash
+
+from constants import MAX_IMAGE_DIMENSION, MEDIA_FORMATS, VIDEO_FORMATS
 from main_window import Ui_mainWindow
 from themes.theme_manager import ThemeManager
 
-IMAGE_FORMATS = {'jpg', 'png', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'tiff', 'tif'}
-VIDEO_FORMATS = {'mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv', 'flv', 'm4v', 'mpg', 'mpeg'}
-MEDIA_FORMATS = IMAGE_FORMATS | VIDEO_FORMATS
-
 
 class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setupUi(self)
-        self.folder = None
-        self.folders = []
-        self.files = []
-        self.curr_file = 0
-        self.image_loaded = False
-        self.original_pixmap = None
-        self.media_path = None
-        self.media_type = None
-        self.cats_visible = False
-        self.video_resolution = None
+        self.folder: Path | None = None
+        self.folders: list[str] = []
+        self.files: list[str] = []
+        self.curr_file: int = 0
+        self.image_loaded: bool = False
+        self.original_pixmap: QtGui.QPixmap | None = None
+        self.media_path: Path | None = None
+        self.media_type: str | None = None
+        self.cats_visible: bool = False
+        self.video_resolution: QtGui.QSize | None = None
 
         self.folderPathSelectorButton.clicked.connect(self.select_folder)
         self.nextButton.clicked.connect(self.next_image)
@@ -50,8 +52,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_playback)
         QShortcut(QKeySequence(Qt.Key.Key_Delete), self, self.delete_file)
 
-        app_dir = os.path.dirname(os.path.abspath(__file__))
-        self.setWindowIcon(QIcon(os.path.join(app_dir, "app_icon.ico")))
+        app_dir = Path(__file__).parent
+        self.setWindowIcon(QIcon(str(app_dir / "app_icon.ico")))
 
         delete_icon = self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogDiscardButton)
         self.deleteFileButton.setIcon(delete_icon)
@@ -104,7 +106,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.toggle_categories()
         self.update_status_bar()
 
-    def _setup_video_container(self):
+    def _setup_video_container(self) -> None:
         self.videoContainer = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(self.videoContainer)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -142,97 +144,101 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
         layout.addWidget(self.videoControlsWidget)
 
-    def _toggle_playback(self):
+    def _toggle_playback(self) -> None:
         if self.mediaPlayer.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.mediaPlayer.pause()
         elif self.mediaPlayer.source().isValid():
             self.mediaPlayer.play()
 
-    def _toggle_mute(self):
+    def _toggle_mute(self) -> None:
         muted = self.muteButton.isChecked()
         self.audioOutput.setMuted(muted)
         self.muteButton.setText("\U0001f507" if muted else "\U0001f50a")
 
-    def _on_playback_state_changed(self, state):
+    def _on_playback_state_changed(self, state: QMediaPlayer.PlaybackState) -> None:
         if state == QMediaPlayer.PlaybackState.PlayingState:
             self.playPauseButton.setText("\u23f8")
         else:
             self.playPauseButton.setText("\u25b6")
 
-    def _on_duration_changed(self, duration):
+    def _on_duration_changed(self, duration: int) -> None:
         self.seekSlider.setRange(0, duration)
         self._update_time_label(self.mediaPlayer.position(), duration)
 
-    def _on_position_changed(self, position):
+    def _on_position_changed(self, position: int) -> None:
         self.seekSlider.setValue(position)
         self._update_time_label(position, self.mediaPlayer.duration())
 
-    def _on_metadata_changed(self):
+    def _on_metadata_changed(self) -> None:
         resolution = self.mediaPlayer.metaData().value(QMediaMetaData.Key.Resolution)
         if resolution and resolution.isValid():
             self.video_resolution = resolution
             self.update_status_bar()
 
-    def _on_player_error(self, error, message):
+    def _on_player_error(self, error: QMediaPlayer.Error, message: str) -> None:
         self._stop_video()
         self.mediaStack.setCurrentWidget(self.imageLabel)
-        file_name = os.path.basename(self.media_path) if self.media_path else "unknown"
+        file_name = self.media_path.name if self.media_path else "unknown"
         self.imageLabel.setText(f"Unable to play video: {file_name}\n{message}")
 
-    def _update_time_label(self, position_ms, duration_ms):
-        def fmt(ms):
+    def _update_time_label(self, position_ms: int, duration_ms: int) -> None:
+        def fmt(ms: int) -> str:
             s = max(0, ms // 1000)
             return f"{s // 60}:{s % 60:02d}"
+
         self.timeLabel.setText(f"{fmt(position_ms)} / {fmt(duration_ms)}")
 
-    def _is_video(self, filename):
-        ext = os.path.splitext(filename)[1].lower().lstrip('.')
-        return ext in VIDEO_FORMATS
+    def _is_video(self, filename: str) -> bool:
+        return Path(filename).suffix.lower().lstrip(".") in VIDEO_FORMATS
 
-    def _stop_video(self):
+    def _stop_video(self) -> None:
         self.mediaPlayer.stop()
         self.mediaPlayer.setSource(QUrl())
 
-    def _play_video(self):
+    def _play_video(self) -> None:
         self.mediaStack.setCurrentWidget(self.videoContainer)
-        self.mediaPlayer.setSource(QUrl.fromLocalFile(self.media_path))
+        self.mediaPlayer.setSource(QUrl.fromLocalFile(str(self.media_path)))
         self.mediaPlayer.play()
 
-    def toggle_categories(self, visible: bool = False):
+    def toggle_categories(self, visible: bool = False) -> None:
         self.cats_visible = visible
 
         self.addCatButton.setVisible(self.cats_visible)
         self.delCatButton.setVisible(self.cats_visible)
         self.catListComboBox.setVisible(self.cats_visible)
 
-    def update_status_bar(self):
+    def update_status_bar(self) -> None:
         if len(self.files) == 0:
             status_text = ""
-        elif self.media_type == 'video':
-            file_name = os.path.basename(self.media_path)
+        elif self.media_type == "video":
+            file_name = self.media_path.name
             if self.video_resolution and self.video_resolution.isValid():
-                res = f'Orig: {self.video_resolution.width()}x{self.video_resolution.height()}'
+                res = f"Orig: {self.video_resolution.width()}x{self.video_resolution.height()}"
             else:
-                res = 'Video'
-            status_text = f'File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | {res}'
+                res = "Video"
+            status_text = f"File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | {res}"
         elif self.original_pixmap is None:
-            file_name = os.path.basename(self.media_path)
-            status_text = f'File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Invalid image'
+            file_name = self.media_path.name
+            status_text = f"File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Invalid image"
         else:
-            file_name = os.path.basename(self.media_path)
+            file_name = self.media_path.name
             orig_width = self.original_pixmap.width()
             orig_height = self.original_pixmap.height()
-            status_text = f'File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Orig: {orig_width}x{orig_height}'
+            status_text = f"File: {self.curr_file + 1} of {len(self.files)} | File: {file_name} | Orig: {orig_width}x{orig_height}"
         self.statusbar.showMessage(status_text)
 
-    def add_btns_for_categories(self):
-        '''Adds buttons to the grid layout for each category'''
+    def add_btns_for_categories(self) -> None:
+        """Adds buttons to the grid layout for each category"""
         for i in range(self.buttonsGridLayout.count())[::-1]:
             self.buttonsGridLayout.itemAt(i).widget().deleteLater()
 
         button_width = 100
         spacing = self.buttonsGridLayout.spacing() or 6
-        available_width = self.centralwidget.width() - self.gridLayout.contentsMargins().left() - self.gridLayout.contentsMargins().right()
+        available_width = (
+            self.centralwidget.width()
+            - self.gridLayout.contentsMargins().left()
+            - self.gridLayout.contentsMargins().right()
+        )
         cols = max(1, available_width // (button_width + spacing))
 
         for idx, category in enumerate(self.folders):
@@ -240,17 +246,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
             col = idx % cols
             button = QtWidgets.QPushButton(category)
             button.setObjectName("categoryButton")
-            button.clicked.connect(self.create_lambda(category))
+            button.clicked.connect(partial(self.move_to_category, category))
             button.setMinimumWidth(button_width)
             button.setFixedHeight(35)
             self.buttonsGridLayout.addWidget(button, row, col)
 
-    def create_lambda(self, category):
-        '''Creates lambda function for each button'''
-        return lambda: self.move_to_category(category)
-
-    def move_to_category(self, category):
-        '''Moves current file to the given category'''
+    def move_to_category(self, category: str) -> None:
+        """Moves current file to the given category"""
         if len(self.files) == 0:
             return
 
@@ -258,52 +260,49 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
 
         file_name = self.files[self.curr_file]
 
-        path_to_file = os.path.join(self.folder, file_name)
-        path_to_dest = os.path.join(self.folder, category, file_name)
+        path_to_file = self.folder / file_name
+        path_to_dest = self.folder / category / file_name
         try:
-            os.rename(path_to_file, path_to_dest)
-        except Exception as e:
-            QMessageBox.warning(self, "Move Failed",
-                                f"Could not move {file_name} to {category}:\n{e}")
+            path_to_file.rename(path_to_dest)
+        except OSError as e:
+            QMessageBox.warning(self, "Move Failed", f"Could not move {file_name} to {category}:\n{e}")
             return
 
         self.files.pop(self.curr_file)
+        self._advance_after_removal()
 
-        if len(self.files) == 0:
-            self.reset_state()
-        elif self.curr_file >= len(self.files):
-            self.curr_file = len(self.files) - 1
-            self.display_media()
-        else:
-            self.display_media()
-
-    def delete_file(self):
-        '''Sends current file to the system recycle bin'''
+    def delete_file(self) -> None:
+        """Sends current file to the system recycle bin"""
         if not self.files:
             return
 
         self._stop_video()
 
         file_name = self.files[self.curr_file]
-        file_path = os.path.join(self.folder, file_name)
+        file_path = self.folder / file_name
 
         confirm = QMessageBox.question(
-            self, "Delete File",
+            self,
+            "Delete File",
             f"Move '{file_name}' to the recycle bin?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes)
+            QMessageBox.StandardButton.Yes,
+        )
 
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
         try:
-            send2trash(os.path.normpath(file_path))
-        except Exception as e:
-            QMessageBox.warning(self, "Delete Failed",
-                                f"Could not delete {file_name}:\n{e}")
+            send2trash(str(file_path))
+        except OSError as e:
+            QMessageBox.warning(self, "Delete Failed", f"Could not delete {file_name}:\n{e}")
             return
 
         self.files.pop(self.curr_file)
+        self._advance_after_removal()
+
+    def _advance_after_removal(self) -> None:
+        """Adjusts curr_file index and refreshes display after a file is removed from the list."""
         if not self.files:
             self.reset_state()
         elif self.curr_file >= len(self.files):
@@ -312,14 +311,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         else:
             self.display_media()
 
-    def reset_state(self):
-        '''Resets state to initial state'''
+    def reset_state(self) -> None:
+        """Resets state to initial state"""
         self.folder = None
         self.folders = []
-        self.folderPathSelectorButton.setText('Select Folder')
-        self.reset_image('Nothing here... Just both of us...')
+        self.folderPathSelectorButton.setText("Select Folder")
+        self.reset_image("Nothing here... Just both of us...")
 
-    def reset_image(self, label="No media files found."):
+    def reset_image(self, label: str = "No media files found.") -> None:
         self._stop_video()
         self.mediaStack.setCurrentWidget(self.imageLabel)
         self.files = []
@@ -327,7 +326,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.imageLabel.clear()
         self.imageLabel.setText(label)
         self.catListComboBox.clear()
-        self.catListComboBox.setPlaceholderText('Categories')
+        self.catListComboBox.setPlaceholderText("Categories")
         self.add_btns_for_categories()
         self.image_loaded = False
         self.original_pixmap = None
@@ -337,114 +336,114 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         self.update_status_bar()
         self._update_nav_buttons()
 
-    def _update_nav_buttons(self):
+    def _update_nav_buttons(self) -> None:
         has_files = len(self.files) > 0
         self.prevButton.setEnabled(has_files and self.curr_file > 0)
         self.nextButton.setEnabled(has_files and self.curr_file < len(self.files) - 1)
         self.deleteFileButton.setEnabled(has_files)
 
-    def display_media(self):
-        '''Loads current file and displays it (image or video)'''
+    def display_media(self) -> None:
+        """Loads current file and displays it (image or video)"""
         if len(self.files) == 0:
             self.reset_image()
             return
 
         self._stop_video()
         self.video_resolution = None
-        self.media_path = os.path.join(self.folder, self.files[self.curr_file])
+        self.media_path = self.folder / self.files[self.curr_file]
 
         if self._is_video(self.files[self.curr_file]):
-            self.media_type = 'video'
+            self.media_type = "video"
             self.original_pixmap = None
             self.image_loaded = False
             self._play_video()
         else:
-            self.media_type = 'image'
+            self.media_type = "image"
             self._display_image()
 
         self.update_status_bar()
         self._update_nav_buttons()
 
-    def _display_image(self):
-        '''Loads image from the current file and displays it scaled to fit'''
+    def _display_image(self) -> None:
+        """Loads image from the current file and displays it scaled to fit"""
         self.mediaStack.setCurrentWidget(self.imageLabel)
-        reader = QtGui.QImageReader(self.media_path)
+        reader = QtGui.QImageReader(str(self.media_path))
         reader.setAutoTransform(True)
         size = reader.size()
-        max_dim = 4096
-        if size.isValid() and (size.width() > max_dim or size.height() > max_dim):
-            reader.setScaledSize(size.scaled(max_dim, max_dim, Qt.AspectRatioMode.KeepAspectRatio))
+        if size.isValid() and (size.width() > MAX_IMAGE_DIMENSION or size.height() > MAX_IMAGE_DIMENSION):
+            reader.setScaledSize(
+                size.scaled(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, Qt.AspectRatioMode.KeepAspectRatio)
+            )
         image = reader.read()
         if image.isNull():
             self.original_pixmap = None
             self.image_loaded = False
             self.imageLabel.clear()
-            file_name = os.path.basename(self.media_path)
-            self.imageLabel.setText(f"Unable to load image: {file_name}")
+            self.imageLabel.setText(f"Unable to load image: {self.media_path.name}")
             return
         self.original_pixmap = QtGui.QPixmap.fromImage(image)
         self._scale_image()
         self.image_loaded = True
 
-    def _scale_image(self):
-        '''Scales the cached original_pixmap to fit the scroll area viewport'''
+    def _scale_image(self) -> None:
+        """Scales the cached original_pixmap to fit the scroll area viewport"""
         if self.original_pixmap is None:
             return
         viewport_size = self.scrollArea.viewport().size()
         scaled = self.original_pixmap.scaled(
-            viewport_size, Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation)
+            viewport_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+        )
         self.imageLabel.setPixmap(scaled)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent | None) -> None:
         if self.image_loaded:
             self._resize_timer.start()
         super().resizeEvent(event)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent | None) -> None:
         self._resize_timer.stop()
         self._stop_video()
         event.accept()
 
-    def set_categories(self):
-        '''Sets the categories to the folders in the current folder'''
+    def set_categories(self) -> None:
+        """Sets the categories to the folders in the current folder"""
         self.catListComboBox.clear()
         self.catListComboBox.addItems(self.folders)
         self.add_btns_for_categories()
 
-    def get_folder_content(self):
-        '''Gets the content of current folder'''
+    def get_folder_content(self) -> None:
+        """Gets the content of current folder"""
         self.curr_file = 0
         self.files = []
         self.folders = []
-        for item in sorted(os.listdir(self.folder)):
-            if os.path.isfile(os.path.join(self.folder, item)):
-                ext = os.path.splitext(item)[1].lower().lstrip('.')
+        for entry in sorted(self.folder.iterdir(), key=lambda p: p.name):
+            if entry.is_file():
+                ext = entry.suffix.lower().lstrip(".")
                 if ext in MEDIA_FORMATS:
-                    self.files.append(item)
+                    self.files.append(entry.name)
             else:
-                self.folders.append(item)
+                self.folders.append(entry.name)
         self.set_categories()
 
-        if len(self.files) != 0:
+        if self.files:
             self.display_media()
         else:
             self.reset_image("No media files found.")
 
-    def next_image(self):
-        '''Shows the next file'''
+    def next_image(self) -> None:
+        """Shows the next file"""
         if self.curr_file < len(self.files) - 1:
             self.curr_file += 1
             self.display_media()
 
-    def prev_image(self):
-        '''Shows the previous file'''
+    def prev_image(self) -> None:
+        """Shows the previous file"""
         if self.curr_file > 0:
             self.curr_file -= 1
             self.display_media()
 
-    def add_category(self):
-        '''Adds new category with the name of the text of combobox'''
+    def add_category(self) -> None:
+        """Adds new category with the name of the text of combobox"""
         category = self.catListComboBox.currentText().strip()
         if not category or category in self.folders:
             return
@@ -452,69 +451,73 @@ class MainWindow(QtWidgets.QMainWindow, Ui_mainWindow):
         invalid_chars = set('/\\:*?"<>|')
         found = [c for c in category if c in invalid_chars]
         if found:
-            QMessageBox.warning(self, "Invalid Name",
-                                f"Category name cannot contain: {' '.join(found)}")
+            QMessageBox.warning(self, "Invalid Name", f"Category name cannot contain: {' '.join(found)}")
             return
 
         try:
-            os.makedirs(os.path.join(self.folder, category))
+            (self.folder / category).mkdir(parents=True)
         except OSError as e:
-            QMessageBox.warning(self, "Create Failed",
-                                f"Could not create category '{category}':\n{e}")
+            QMessageBox.warning(self, "Create Failed", f"Could not create category '{category}':\n{e}")
             return
 
         self.folders.append(category)
         self.set_categories()
 
-    def del_category(self):
-        '''Deletes selected category.
-        All files will be returned to the main folder'''
+    def del_category(self) -> None:
+        """Deletes selected category.
+        All files will be returned to the main folder"""
         category = self.catListComboBox.currentText()
         if category not in self.folders or not category:
             return
-        delDialogMessage = f'''Are you sure to delete {category} category?
-        All files in this category will be moved to main folder'''
+        del_dialog_message = (
+            f"Are you sure to delete {category} category?\nAll files in this category will be moved to main folder"
+        )
 
         confirmation = QMessageBox.question(
-            self, "Delete Category", delDialogMessage,
+            self,
+            "Delete Category",
+            del_dialog_message,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No)
+            QMessageBox.StandardButton.No,
+        )
 
         if confirmation == QMessageBox.StandardButton.Yes:
-            category_path = os.path.join(self.folder, category)
-            failures = []
+            category_path = self.folder / category
+            failures: list[str] = []
 
-            for file in os.listdir(category_path):
+            for entry in category_path.iterdir():
                 try:
-                    os.rename(os.path.join(category_path, file),
-                              os.path.join(self.folder, file))
+                    entry.rename(self.folder / entry.name)
                 except OSError as e:
-                    failures.append(f"{file}: {e}")
+                    failures.append(f"{entry.name}: {e}")
 
             if failures:
-                QMessageBox.warning(self, "Move Errors",
-                                    f"Some files could not be moved back:\n" + "\n".join(failures))
+                QMessageBox.warning(
+                    self,
+                    "Move Errors",
+                    f"Could not move {len(failures)} file(s) back to the main folder. "
+                    f"Category '{category}' was not removed.\n\n" + "\n".join(failures),
+                )
+                self.get_folder_content()
+                return
 
             try:
-                os.rmdir(category_path)
-                self.folders.remove(category)
+                category_path.rmdir()
             except OSError:
-                if not failures:
-                    QMessageBox.warning(self, "Delete Failed",
-                                        f"Could not remove folder '{category}' (not empty).")
+                QMessageBox.warning(self, "Delete Failed", f"Could not remove folder '{category}' (not empty).")
 
             self.get_folder_content()
 
-    def select_folder(self):
-        '''Opens folder selection dialog and sets the folder path'''
+    def select_folder(self) -> None:
+        """Opens folder selection dialog and sets the folder path"""
         self.files = []
-        self.folder = QFileDialog.getExistingDirectory(self, "Select Folder")
-        if not self.folder:
+        folder_str = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if not folder_str:
             return
-        self.folderPathSelectorButton.setText(os.path.basename(self.folder))
+        self.folder = Path(folder_str)
+        self.folderPathSelectorButton.setText(self.folder.name)
         self.toggle_categories(True)
         self.get_folder_content()
-
 
 
 if __name__ == "__main__":
